@@ -5,11 +5,12 @@ from typing import List, Dict, Tuple, NoReturn
 USER_DIR = os.path.expanduser("~")
 
 
-def get_file_modified_year_month(path: str) -> str:
+def get_file_modified_year_month(path: str) -> Tuple[str, str]:
     file_modified_unix_ts = os.path.getmtime(path)
-    yr_month = datetime.utcfromtimestamp(file_modified_unix_ts).strftime('%Y_%m')
+    year = datetime.utcfromtimestamp(file_modified_unix_ts).strftime('%Y')
+    month = datetime.utcfromtimestamp(file_modified_unix_ts).strftime('%B')[:3].upper()
 
-    return yr_month
+    return year, month
 
 
 def stage_image_files(source_paths: List[str], destination_base_dir: str) -> NoReturn:
@@ -17,7 +18,7 @@ def stage_image_files(source_paths: List[str], destination_base_dir: str) -> NoR
     pass
 
 
-def retrieve_and_map_image_files() -> Tuple[List[str], Dict[Tuple[str, str]: List[str]]]:
+def retrieve_and_map_image_files() -> Tuple[List[str], Dict[Tuple[str, str], List[str]]]:
     input_pictures_dir = f"{USER_DIR}/IDrive Downloads/JaimesMacBookPro/My Pictures/2010/JAN"  # TODO tmp
     year_month_mappings = dict()
     picture_locations = list()
@@ -31,30 +32,30 @@ def retrieve_and_map_image_files() -> Tuple[List[str], Dict[Tuple[str, str]: Lis
 
             # Only picture/image files
             if file_extension in [".jpg", ".jpeg"]:
-                year_month = get_file_modified_year_month(file_path)
+                year_and_month = get_file_modified_year_month(file_path)
 
-                # Capture file path and the file's year/month
-                if year_month in year_month_mappings:
-                    year_month_mappings[year_month].append(file_path)
+                # Capture file path and the file's last modified year and month
+                if year_and_month in year_month_mappings:
+                    year_month_mappings[year_and_month].append(file_path)
                 else:
-                    year_month_mappings[year_month] = list(file_path)
+                    year_month_mappings[year_and_month] = [file_path]
 
                 # Also track separately as a flat list for staging and debugging
-                picture_locations.append(file_extension)
+                picture_locations.append(file_path)
 
     print(f"There are {len(year_month_mappings)} unique year months based on file modify timestamps")
     print(f"and {len(picture_locations)} total files to process...")
     print("")
 
     # TODO testing
-    print(f"year / month image file mappings:")
-    for year_month in year_month_mappings:
-        print(year_month)
-
-        for file_path in year_month:
-            print(file_path)
-
-        print("")
+    # print("year / month image file mappings:")
+    # for year_and_month in year_month_mappings:
+    #     print(year_and_month)
+    #
+    #     for file_path in year_month_mappings[year_and_month]:
+    #         print(f"    {file_path}")
+    #
+    #     print("")
 
     return picture_locations, year_month_mappings
 
@@ -76,9 +77,5 @@ def main():
     # TODO stage_image_files(source_paths=source_picture_locations, destination_dir=output_pictures_dir)
 
 
-
-
-
-    # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     main()
