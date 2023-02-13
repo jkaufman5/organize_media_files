@@ -1,5 +1,6 @@
 import os
 import re
+import click
 import logging
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -8,6 +9,12 @@ from typing import List, Dict, Tuple, NoReturn
 
 USER_DIR = os.path.expanduser("~")
 LOGGER_NAME = "organize_media_files"
+
+"""
+Usage:
+# Navigate to scripts folder and provide source directory for image files to be organized
+python organize_media_files.py source_dir=~/Pictures/tablet/
+"""
 
 
 def year_and_month_are_valid(y: str, m: str) -> bool:
@@ -110,15 +117,14 @@ def stage_image_files(source_paths: List[str], destination_base_dir: str) -> NoR
     pass
 
 
-def retrieve_and_map_image_files() -> (
-    Tuple[List[str], Dict[Tuple[str, str], List[str]]]
-):
+def retrieve_and_map_image_files(
+    input_pictures_dir: str,
+) -> Tuple[List[str], Dict[Tuple[str, str], List[str]]]:
     logger = logging.getLogger(LOGGER_NAME)
-    input_pictures_dir = f"{USER_DIR}/Pictures/tablet"  # TODO tmp
     year_month_mappings = dict()
     picture_locations = list()
 
-    for path, sub_dirs, files in os.walk(input_pictures_dir):
+    for path, sub_dirs, files in os.walk(os.path.expanduser(input_pictures_dir)):
         for file_name in files:
             # Only image files
             if file_name.lower().endswith((".jpg", ".jpeg", ".gif", ".png")):
@@ -160,7 +166,9 @@ def save_organized_image_files():
     pass
 
 
-def main():
+@click.command()
+@click.option("--source-dir", help="source directory where image files live")
+def main(source_dir: str):
     # 1. Get list of files nested within base folder
     # 2. Copy all files into base folder
     # 3. Copy all files into new sub-folders based on year + month
@@ -170,9 +178,11 @@ def main():
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    source_picture_locations, picture_mappings = retrieve_and_map_image_files()
-    output_pictures_dir = f"{USER_DIR}/Pictures"
+    source_picture_locations, picture_mappings = retrieve_and_map_image_files(
+        input_pictures_dir=source_dir
+    )
 
+    # TODO tmp
     exit(0)
 
     # TODO stage_image_files(source_paths=source_picture_locations, destination_dir=output_pictures_dir)
