@@ -19,8 +19,8 @@ Usage:
 
 cd scripts/
 python organize_media_files.py \
---source_dirs=~/Pictures \
---output_dir=~/Pictures_tmp
+--source_dir=~/Pictures \
+--output_dir=~/Pictures1
 """
 
 
@@ -51,10 +51,10 @@ def year_and_month_are_valid(y: str, m: str) -> bool:
     return year_is_valid and month_is_valid
 
 
-def get_image_modified_year_month(path: str) -> Tuple[str, str]:
+def get_image_modified_year_month(file_path: str) -> Tuple[str, str]:
     # 1. Extract date from image exif metadata
     try:
-        image_exif_metadata = Image.open(path).getexif()
+        image_exif_metadata = Image.open(file_path).getexif()
         image_modified_timestamps = [
             image_exif_metadata.get(tag_id)
             for tag_id in image_exif_metadata
@@ -79,7 +79,7 @@ def get_image_modified_year_month(path: str) -> Tuple[str, str]:
                 return year, month
 
     # 2. Otherwise, extract date from file name (two expected formats handled)
-    file_name = path.split("/")[-1]
+    file_name = os.path.basename(file_path)
     expression = r".*_?((?:19|20)[0-9]{6}).*"
     file_name_string_dates = re.findall(expression, file_name)
 
@@ -114,7 +114,7 @@ def get_image_modified_year_month(path: str) -> Tuple[str, str]:
                 return year, month
 
     # 3. Otherwise, extract date from file metadata
-    file_datetime = os.path.getmtime(path)
+    file_datetime = os.path.getmtime(file_path)
 
     if file_datetime:
         year = datetime.utcfromtimestamp(file_datetime).strftime("%Y")
@@ -131,60 +131,67 @@ def get_image_modified_year_month(path: str) -> Tuple[str, str]:
 
 
 def retrieve_and_map_image_files(
-    input_picture_dirs: List[str],
-) -> Tuple[List[str], Dict[Tuple[str, str], List[str]]]:
+    input_pictures_dir: str,
+) -> Dict[Tuple[str, str], List[str]]:
     logger = logging.getLogger(LOGGER_NAME)
 
     year_month_mappings = dict()
     picture_locations = list()
-    # unique_file_extensions = set()
+    # TODO unique_file_extensions = set()
 
     image_extensions = [
         ".bmp",
         ".gif",
-        ".ico",
         ".jpeg",
         ".jpg",
         ".pdf",
         ".png",
     ]
 
-    # progress_widgets = [
-    #     ' [', progressbar.Timer(), '] ',
-    #     progressbar.Bar(),
-    #     ' (', progressbar.ETA(), ') ',
+    # TODO video_extensions = [
+    #     ".3gp",
+    #     ".avi",
+    #     ".bin",
+    #     ".iso",
+    #     ".m4v",
+    #     ".mkv",
+    #     ".mov",
+    #     ".mp4",
+    #     ".mpeg",
+    #     ".mpg",
+    #     ".mts",
+    #     ".wmv",
     # ]
 
-    for input_pictures_dir in input_picture_dirs:
-        logger.info(
-            "Extracting image file paths and timestamps from %s..." % input_pictures_dir
-        )
+    logger.info(
+        "Extracting image file paths and timestamps from %s..." % input_pictures_dir
+    )
+    logger.info("")
 
-        for path, sub_dirs, files in progressbar.progressbar(
-            iterator=os.walk(os.path.expanduser(input_pictures_dir)),
-            # TODO widgets=progress_widgets
-        ):
-            for file_name in files:
-                file_extension = os.path.splitext(file_name)[1].lower()
-                # if file_extension:
-                #     unique_file_extensions.add(file_extension)
+    for path, sub_dirs, files in progressbar.progressbar(
+        iterator=os.walk(os.path.expanduser(input_pictures_dir)),
+    ):
+        for file_name in files:
+            file_extension = os.path.splitext(file_name)[1].lower()
+            # TODO if file_extension:
+            #      unique_file_extensions.add(file_extension)
 
-                # Only image files
-                if file_extension and file_extension in image_extensions:
-                    file_name_with_path = os.path.join(path, file_name)
+            # Only image files
+            if file_extension and file_extension in image_extensions:
+                file_name_with_path = os.path.join(path, file_name)
+                year_and_month = get_image_modified_year_month(
+                    file_path=file_name_with_path
+                )
 
-                    # TODO year_and_month = get_image_modified_year_month(file_name_with_path)
-                    #  # Keep track of each image file and its respective last modified year and month
-                    #  if year_and_month in year_month_mappings:
-                    #      year_month_mappings[year_and_month].append(file_name_with_path)
-                    #  else:
-                    #      year_month_mappings[year_and_month] = [file_name_with_path]
+                # Keep track of each image file and its respective last modified year and month
+                if year_and_month in year_month_mappings:
+                    year_month_mappings[year_and_month].append(file_name_with_path)
+                else:
+                    year_month_mappings[year_and_month] = [file_name_with_path]
 
-                    # TODO
-                    picture_locations.append(file_name_with_path)
+                picture_locations.append(file_name_with_path)
 
-        logger.info("Done.")
-
+    logger.info("Done.")
     logger.info("")
     logger.info(
         "There are %s unique year months based on file modify timestamps"
@@ -203,12 +210,13 @@ def retrieve_and_map_image_files(
         for file_path in year_month_mappings[year_and_month][:3]:
             pass  # logger.info("    %s" % file_path)
 
-    return picture_locations, year_month_mappings
+    return year_month_mappings
 
 
-def stage_image_files(source_paths: List[str], destination_base_dir: str) -> NoReturn:
+def save_organized_image_files(
+    image_file_mappings: Dict[Tuple[str, str], List[str]], destination_base_dir: str
+) -> NoReturn:
     logger = logging.getLogger(LOGGER_NAME)
-    destination_base_dir = os.path.expanduser(destination_base_dir)
 
     # Assume supplied destination directory either does not exist or is empty
     # and create if not exists
@@ -221,34 +229,50 @@ def stage_image_files(source_paths: List[str], destination_base_dir: str) -> NoR
             logger.error(error_msg)
             raise ValueError(error_msg)
     else:
+        logger.info("Creating new base directory: %s" % destination_base_dir)
         os.makedirs(destination_base_dir)
 
-    # Stage copy of files
-    logger.info("Staging a copy of all image files to %s..." % destination_base_dir)
+    # Stage copy of image files organized based on year and month folders
+    logger.info(
+        "Copying all image files organized under %s by year and month..."
+        % destination_base_dir
+    )
+    logger.info("")
 
-    for source_path in progressbar.progressbar(iterator=source_paths):
-        shutil.copy(
-            src=source_path,
-            dst=destination_base_dir,
-        )
+    copy_counter = 0
 
-    logger.info("%s image files successfully copied." % len(source_paths))
+    for year, month in progressbar.progressbar(iterator=image_file_mappings):
+        # Create subdirectory if not exists
+        destination_dir = os.path.join(destination_base_dir, f"{year}/{month}")
+        os.makedirs(name=destination_dir, exist_ok=True)
 
+        for source_file_path in image_file_mappings[year, month]:
+            # TODO is this needed?
+            #  source_file_name = os.path.basename(source_file_path)
+            #  #
+            #  destination_file_path = os.path.join(
+            #     year_month_path, source_file_name
+            # )
 
-def save_organized_image_files():
-    # TODO
-    pass
+            shutil.copy(
+                src=source_file_path,
+                dst=destination_dir,
+            )
+            copy_counter += 1
+
+    logger.info("%s image files successfully copied." % copy_counter)
+    logger.info("")
 
 
 @click.command()
 @click.option(
-    "--source_dirs",
-    help="source directories where image files live (separate multiple values with commas",
+    "--source_dir",
+    help="source directory where image files live (separate multiple values with commas",
 )
 @click.option(
     "--output_dir", help="destination base directory to move reorganized image files"
 )
-def main(source_dirs: str, output_dir: str):
+def main(source_dir: str, output_dir: str):
     # 1. Get list of files nested within base folder
     # 2. Copy all files into base folder
     # 3. Copy all files into new sub-folders based on year + month
@@ -257,16 +281,13 @@ def main(source_dirs: str, output_dir: str):
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    source_dir_list = source_dirs.replace(" ", "").split(",")
 
-    source_picture_locations, picture_mappings = retrieve_and_map_image_files(
-        input_picture_dirs=source_dir_list
-    )
-    stage_image_files(
-        source_paths=source_picture_locations, destination_base_dir=output_dir
-    )
+    picture_mappings = retrieve_and_map_image_files(input_pictures_dir=source_dir)
 
-    # TODO function call to move files based on year and month
+    save_organized_image_files(
+        image_file_mappings=picture_mappings,
+        destination_base_dir=os.path.expanduser(output_dir),
+    )
 
 
 if __name__ == "__main__":
