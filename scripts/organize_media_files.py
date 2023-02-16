@@ -28,22 +28,26 @@ cd scripts/
 python organize_media_files.py \
 --source_dir=~/Pictures/phone \
 --output_dir=~/Pictures/laptop \
---media_type=photos
+--media_type=photos \
+--copy_or_move=move
 
 python organize_media_files.py \
 --source_dir=~/Pictures/tablet \
 --output_dir=~/Pictures/laptop \
---media_type=photos
+--media_type=photos \
+--copy_or_move=move
 
 python organize_media_files.py \
 --source_dir=~/Movies/phone \
 --output_dir=~/Movies/laptop \
---media_type=videos
+--media_type=videos \
+--copy_or_move=move
 
 python organize_media_files.py \
 --source_dir=~/Movies/tablet \
 --output_dir=~/Movies/laptop \
---media_type=videos
+--media_type=videos \
+--copy_or_move=move
 """
 
 
@@ -248,25 +252,29 @@ def retrieve_and_map_image_files(
 
 
 def save_organized_image_files(
-    image_file_mappings: Dict[Tuple[str, str], List[str]], destination_base_dir: str
+    image_file_mappings: Dict[Tuple[str, str], List[str]],
+    destination_base_dir: str,
+    copy_or_move_source_files: str,
 ) -> NoReturn:
     logger = logging.getLogger(LOGGER_NAME)
+
+    transfer_via_move = copy_or_move_source_files == "move"
+
+    if transfer_via_move:
+        transfer_language = ["Moving", "moved"]
+    else:
+        transfer_language = ["Copying", "copied"]
 
     # Assume supplied destination directory either does not exist or is empty
     # and create if not exists
     if not os.path.exists(destination_base_dir):
         logger.info("Creating new base directory: %s" % destination_base_dir)
         os.makedirs(destination_base_dir)
-    # TODO remove commented section
-    # else:
-    #     if len(os.listdir(destination_base_dir)) > 0:
-    #         logger.warning(
-    #             "The destination directory, %s, is not empty"
-    #             % destination_base_dir
-    #         )
 
     # Stage copy of image files organized based on year and month folders
-    logger.info("Copying all image files organized by year and month under")
+    logger.info(
+        "%s all image files organized by year and month under" % transfer_language[0]
+    )
     logger.info("%s/..." % destination_base_dir)
     logger.info("")
 
@@ -281,19 +289,23 @@ def save_organized_image_files(
             source_file_name = os.path.basename(source_file_path)
             destination_file_path = os.path.join(destination_dir, source_file_name)
 
-            print("~~~~~~~~~~~~~~~~~~~~~")
-            print("Simulating writing from %s " % source_file_path)
-            print("to %s" % destination_file_path)
-            print("~~~~~~~~~~~~~~~~~~~~~")
+            if transfer_via_move:
+                shutil.move(
+                    src=source_file_path,
+                    dst=destination_file_path,
+                )
+            # Copy source files by default
+            else:
+                shutil.copyfile(
+                    src=source_file_path,
+                    dst=destination_file_path,
+                )
 
-            # TODO tmp
-            # shutil.copyfile(
-            #     src=source_file_path,
-            #     dst=destination_file_path,
-            # )
             copy_counter += 1
 
-    logger.info("%s image files successfully copied." % copy_counter)
+    logger.info(
+        "%s image files successfully %s." % (copy_counter, transfer_language[1])
+    )
     logger.info("")
 
 
@@ -313,10 +325,17 @@ def save_organized_image_files(
 @click.option(
     "--media_type",
     required=True,
-    type=click.Choice(["photos", "videos"]),
+    type=click.Choice(["photos", "videos", "all_extensions"]),
     help="'photos' or 'videos': defines which file extensions to include",
 )
-def main(source_dir: str, output_dir: str, media_type: str):
+@click.option(
+    "--copy_or_move",
+    required=False,
+    type=click.Choice(["copy", "move"]),
+    default="copy",
+    help="'photos' or 'videos': defines which file extensions to include",
+)
+def main(source_dir: str, output_dir: str, media_type: str, copy_or_move):
     # 1. Get list of files nested within base folder
     # 2. Copy all files into base folder
     # 3. Copy all files into new sub-folders based on year + month
@@ -327,6 +346,7 @@ def main(source_dir: str, output_dir: str, media_type: str):
     save_organized_image_files(
         image_file_mappings=picture_mappings,
         destination_base_dir=os.path.expanduser(output_dir),
+        copy_or_move_source_files=copy_or_move,
     )
 
 
