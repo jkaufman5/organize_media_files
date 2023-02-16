@@ -9,18 +9,41 @@ from PIL.ExifTags import TAGS
 from datetime import datetime
 from typing import List, Dict, Tuple, NoReturn
 
+
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 USER_DIR = os.path.expanduser("~")
 LOGGER_NAME = "organize_media_files"
 # Increase max file size
 Image.MAX_IMAGE_PIXELS = 1000000000
 
 """
-Usage:
+Usage examples:
 
 cd scripts/
+
 python organize_media_files.py \
---source_dir=~/Pictures \
---output_dir=~/Pictures1
+--source_dir=~/Pictures/phone \
+--output_dir=~/Pictures/laptop \
+--media_type=photos
+
+python organize_media_files.py \
+--source_dir=~/Pictures/tablet \
+--output_dir=~/Pictures/laptop \
+--media_type=photos
+
+python organize_media_files.py \
+--source_dir=~/Movies/phone \
+--output_dir=~/Movies/laptop \
+--media_type=videos
+
+python organize_media_files.py \
+--source_dir=~/Movies/tablet \
+--output_dir=~/Movies/laptop \
+--media_type=videos
 """
 
 
@@ -131,7 +154,7 @@ def get_image_modified_year_month(file_path: str) -> Tuple[str, str]:
 
 
 def retrieve_and_map_image_files(
-    input_pictures_dir: str,
+    input_pictures_dir: str, file_type: str
 ) -> Dict[Tuple[str, str], List[str]]:
     logger = logging.getLogger(LOGGER_NAME)
 
@@ -139,29 +162,34 @@ def retrieve_and_map_image_files(
     picture_locations = list()
     # TODO unique_file_extensions = set()
 
-    image_extensions = [
-        ".bmp",
-        ".gif",
-        ".jpeg",
-        ".jpg",
-        ".pdf",
-        ".png",
-    ]
-
-    # TODO video_extensions = [
-    #     ".3gp",
-    #     ".avi",
-    #     ".bin",
-    #     ".iso",
-    #     ".m4v",
-    #     ".mkv",
-    #     ".mov",
-    #     ".mp4",
-    #     ".mpeg",
-    #     ".mpg",
-    #     ".mts",
-    #     ".wmv",
-    # ]
+    if file_type == "photos":
+        file_extensions = [
+            ".bmp",
+            ".gif",
+            ".jpeg",
+            ".jpg",
+            ".pdf",
+            ".png",
+        ]
+    elif file_type == "videos":
+        file_extensions = [
+            ".3gp",
+            ".avi",
+            ".bin",
+            ".iso",
+            ".m4v",
+            ".mkv",
+            ".mov",
+            ".mp4",
+            ".mpeg",
+            ".mpg",
+            ".mts",
+            ".wmv",
+        ]
+    else:
+        error_msg = "file_type, %s, must be either 'photos' or 'videos'" % file_type
+        logger.error(error_msg)
+        raise ValueError(error_msg)
 
     logger.info(
         "Extracting image file paths and timestamps from %s..." % input_pictures_dir
@@ -176,8 +204,8 @@ def retrieve_and_map_image_files(
             # TODO if file_extension:
             #      unique_file_extensions.add(file_extension)
 
-            # Only image files
-            if file_extension and file_extension in image_extensions:
+            # Only expected media files formats
+            if file_extension and file_extension in file_extensions:
                 file_name_with_path = os.path.join(path, file_name)
                 year_and_month = get_image_modified_year_month(
                     file_path=file_name_with_path
@@ -193,11 +221,17 @@ def retrieve_and_map_image_files(
 
     logger.info("Done.")
     logger.info("")
+
+    if len(picture_locations) == 0:
+        logger.warning("No eligible media files to process; terminating program.")
+        logger.warning("")
+        exit(0)
+
+    logger.info("There are %s total files to process" % len(picture_locations))
     logger.info(
-        "There are %s unique year months based on file modify timestamps"
+        "including %s unique year / month values extracted from these files"
         % len(year_month_mappings)
     )
-    logger.info("and %s total files to process." % len(picture_locations))
     logger.info("")
 
     year_month_mappings = dict(sorted(year_month_mappings.items()))
@@ -220,23 +254,20 @@ def save_organized_image_files(
 
     # Assume supplied destination directory either does not exist or is empty
     # and create if not exists
-    if os.path.exists(destination_base_dir):
-        if len(os.listdir(destination_base_dir)) > 0:
-            error_msg = (
-                "The directory, %s, is not empty; please clean it up or provide a different one."
-                % destination_base_dir
-            )
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-    else:
+    if not os.path.exists(destination_base_dir):
         logger.info("Creating new base directory: %s" % destination_base_dir)
         os.makedirs(destination_base_dir)
+    # TODO remove commented section
+    # else:
+    #     if len(os.listdir(destination_base_dir)) > 0:
+    #         logger.warning(
+    #             "The destination directory, %s, is not empty"
+    #             % destination_base_dir
+    #         )
 
     # Stage copy of image files organized based on year and month folders
-    logger.info(
-        "Copying all image files organized under %s by year and month..."
-        % destination_base_dir
-    )
+    logger.info("Copying all image files organized by year and month under")
+    logger.info("%s/..." % destination_base_dir)
     logger.info("")
 
     copy_counter = 0
@@ -247,17 +278,19 @@ def save_organized_image_files(
         os.makedirs(name=destination_dir, exist_ok=True)
 
         for source_file_path in image_file_mappings[year, month]:
-            # TODO is this needed?
-            #  source_file_name = os.path.basename(source_file_path)
-            #  #
-            #  destination_file_path = os.path.join(
-            #     year_month_path, source_file_name
-            # )
+            source_file_name = os.path.basename(source_file_path)
+            destination_file_path = os.path.join(destination_dir, source_file_name)
 
-            shutil.copy(
-                src=source_file_path,
-                dst=destination_dir,
-            )
+            print("~~~~~~~~~~~~~~~~~~~~~")
+            print("Simulating writing from %s " % source_file_path)
+            print("to %s" % destination_file_path)
+            print("~~~~~~~~~~~~~~~~~~~~~")
+
+            # TODO tmp
+            # shutil.copyfile(
+            #     src=source_file_path,
+            #     dst=destination_file_path,
+            # )
             copy_counter += 1
 
     logger.info("%s image files successfully copied." % copy_counter)
@@ -267,22 +300,29 @@ def save_organized_image_files(
 @click.command()
 @click.option(
     "--source_dir",
+    required=True,
+    type=str,
     help="source directory where image files live (separate multiple values with commas",
 )
 @click.option(
-    "--output_dir", help="destination base directory to move reorganized image files"
+    "--output_dir",
+    required=True,
+    type=str,
+    help="destination base directory to move reorganized image files",
 )
-def main(source_dir: str, output_dir: str):
+@click.option(
+    "--media_type",
+    required=True,
+    type=click.Choice(["photos", "videos"]),
+    help="'photos' or 'videos': defines which file extensions to include",
+)
+def main(source_dir: str, output_dir: str, media_type: str):
     # 1. Get list of files nested within base folder
     # 2. Copy all files into base folder
     # 3. Copy all files into new sub-folders based on year + month
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)-8s %(message)s",
-        level=logging.INFO,
-        datefmt="%Y-%m-%d %H:%M:%S",
+    picture_mappings = retrieve_and_map_image_files(
+        input_pictures_dir=source_dir, file_type=media_type
     )
-
-    picture_mappings = retrieve_and_map_image_files(input_pictures_dir=source_dir)
 
     save_organized_image_files(
         image_file_mappings=picture_mappings,
