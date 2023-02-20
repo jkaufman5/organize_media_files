@@ -15,7 +15,6 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-USER_DIR = os.path.expanduser("~")
 LOGGER_NAME = "organize_media_files"
 # Increase max file size
 Image.MAX_IMAGE_PIXELS = 1000000000
@@ -142,7 +141,6 @@ def retrieve_and_map_image_files(
 
     year_month_mappings = dict()
     picture_locations = list()
-    # TODO unique_file_extensions = set()
 
     if file_type == "photos":
         file_extensions = [
@@ -183,8 +181,6 @@ def retrieve_and_map_image_files(
     ):
         for file_name in files:
             file_extension = os.path.splitext(file_name)[1].lower()
-            # TODO if file_extension:
-            #      unique_file_extensions.add(file_extension)
 
             # Only expected media files formats
             if file_extension and file_extension in file_extensions:
@@ -217,14 +213,6 @@ def retrieve_and_map_image_files(
     logger.info("")
 
     year_month_mappings = dict(sorted(year_month_mappings.items()))
-
-    # Log a sample of results
-    # TODO logger.info("year / month image file mappings:")
-    for year_and_month in year_month_mappings:
-        pass  # logger.info(year_and_month)
-
-        for file_path in year_month_mappings[year_and_month][:3]:
-            pass  # logger.info("    %s" % file_path)
 
     return year_month_mappings
 
@@ -272,14 +260,13 @@ def save_organized_image_files(
             if not os.path.exists(destination_file_path):
                 new_files.add(destination_file_path)
 
-            # TODO keep track of how many new files were transferred
+            # Move source files if desired
             if transfer_via_move:
                 shutil.move(
                     src=source_file_path,
                     dst=destination_file_path,
                 )
             # Copy source files by default
-            # TODO keep track of how many new files were transferred
             else:
                 shutil.copyfile(
                     src=source_file_path,
