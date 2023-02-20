@@ -32,20 +32,8 @@ python organize_media_files.py \
 --copy_or_move=move
 
 python organize_media_files.py \
---source_dir=~/Pictures/tablet \
---output_dir=~/Pictures/laptop \
---media_type=photos \
---copy_or_move=move
-
-python organize_media_files.py \
 --source_dir=~/Movies/phone \
---output_dir=~/Movies/laptop \
---media_type=videos \
---copy_or_move=move
-
-python organize_media_files.py \
---source_dir=~/Movies/tablet \
---output_dir=~/Movies/laptop \
+--output_dir=~/Movies/laptop/Home\ Videos \
 --media_type=videos \
 --copy_or_move=move
 """
@@ -140,21 +128,11 @@ def get_image_modified_year_month(file_path: str) -> Tuple[str, str]:
             if year_and_month_are_valid(y=year, m=month):
                 return year, month
 
-    # 3. Otherwise, extract date from file metadata
-    file_datetime = os.path.getmtime(file_path)
+    # 3. Otherwise, default to "misc" folder
+    year = "misc"
+    month = ""
 
-    if file_datetime:
-        year = datetime.utcfromtimestamp(file_datetime).strftime("%Y")
-        month = datetime.utcfromtimestamp(file_datetime).strftime("%b").upper()
-
-        if year_and_month_are_valid(y=year, m=month):
-            return year, month
-
-        # 4. Otherwise, we can fall back on using the current year and month =(
-        year = datetime.now().strftime("%Y")
-        month = datetime.now().strftime("%b").upper()
-
-        return year, month
+    return year, month
 
 
 def retrieve_and_map_image_files(
@@ -258,6 +236,7 @@ def save_organized_image_files(
 ) -> NoReturn:
     logger = logging.getLogger(LOGGER_NAME)
 
+    new_files = set()
     transfer_via_move = copy_or_move_source_files == "move"
 
     if transfer_via_move:
@@ -289,12 +268,18 @@ def save_organized_image_files(
             source_file_name = os.path.basename(source_file_path)
             destination_file_path = os.path.join(destination_dir, source_file_name)
 
+            # Keep track of new files to be transferred
+            if not os.path.exists(destination_file_path):
+                new_files.add(destination_file_path)
+
+            # TODO keep track of how many new files were transferred
             if transfer_via_move:
                 shutil.move(
                     src=source_file_path,
                     dst=destination_file_path,
                 )
             # Copy source files by default
+            # TODO keep track of how many new files were transferred
             else:
                 shutil.copyfile(
                     src=source_file_path,
@@ -306,6 +291,7 @@ def save_organized_image_files(
     logger.info(
         "%s image files successfully %s." % (copy_counter, transfer_language[1])
     )
+    logger.info("%s of these files were new." % len(new_files))
     logger.info("")
 
 
@@ -339,6 +325,9 @@ def main(source_dir: str, output_dir: str, media_type: str, copy_or_move):
     # 1. Get list of files nested within base folder
     # 2. Copy all files into base folder
     # 3. Copy all files into new sub-folders based on year + month
+    if os.path.expanduser(source_dir) == os.path.expanduser(output_dir):
+        raise ValueError("source_dir must be different than output_dir.")
+
     picture_mappings = retrieve_and_map_image_files(
         input_pictures_dir=source_dir, file_type=media_type
     )

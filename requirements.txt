@@ -1,4 +1,5 @@
-pre-commit
 Pillow
-click
+pre-commit
 progressbar2
+click
+
