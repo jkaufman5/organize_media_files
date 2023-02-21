@@ -287,7 +287,7 @@ def save_organized_image_files(
     "--source_dir",
     required=True,
     type=str,
-    help="source directory where image files live (separate multiple values with commas",
+    help="source directory where media files live",
 )
 @click.option(
     "--output_dir",

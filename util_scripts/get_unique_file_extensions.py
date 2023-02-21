@@ -41,6 +41,7 @@ def print_unique_file_extensions(file_dir: str) -> NoReturn:
     for file_ext in sorted(file_extensions):
         logger.info(file_ext)
 
+    logger.info("------------------------------")
     logger.info("")
 
 
@@ -49,7 +50,7 @@ def print_unique_file_extensions(file_dir: str) -> NoReturn:
     "--source_dir",
     required=True,
     type=str,
-    help="source directory where image files live (separate multiple values with commas",
+    help="source directory where media files live",
 )
 def main(source_dir: str):
     print_unique_file_extensions(file_dir=source_dir)
