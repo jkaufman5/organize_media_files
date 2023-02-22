@@ -5,10 +5,8 @@ from typing import NoReturn
 
 
 logging.basicConfig(
-    # TODO remove format="%(asctime)s %(levelname)-8s %(message)s",
     format="",
     level=logging.INFO,
-    datefmt="%Y-%m-%d %H:%M:%S",
 )
 LOGGER_NAME = "get_files_by_extension"
 
@@ -19,12 +17,12 @@ Usage examples:
 cd util_scripts/
 
 python get_files_by_extension.py \
---source_dir=~/Pictures \
+--source_dir=~/Pictures/laptop \
 --file_extension=gif
 """
 
 
-def print_files(file_dir: str, file_ext: str) -> NoReturn:
+def print_file_names(file_dir: str, file_ext: str) -> NoReturn:
     logger = logging.getLogger(LOGGER_NAME)
     file_locations = list()
 
@@ -67,7 +65,7 @@ def print_files(file_dir: str, file_ext: str) -> NoReturn:
     help="file extension to search for (e.g., jpg)",
 )
 def main(source_dir: str, file_extension: str):
-    print_files(file_dir=source_dir, file_ext=file_extension)
+    print_file_names(file_dir=source_dir, file_ext=file_extension)
 
 
 if __name__ == "__main__":

@@ -5,10 +5,8 @@ from typing import NoReturn
 
 
 logging.basicConfig(
-    # TODO remove format="%(asctime)s %(levelname)-8s %(message)s",
     format="",
     level=logging.INFO,
-    datefmt="%Y-%m-%d %H:%M:%S",
 )
 LOGGER_NAME = "get_unique_file_extensions"
 
@@ -19,11 +17,11 @@ Usage examples:
 cd util_scripts/
 
 python get_unique_file_extensions.py \
---source_dir=~/Pictures
+--source_dir=~/Pictures/laptop
 """
 
 
-def print_unique_file_extensions(file_dir: str) -> NoReturn:
+def print_file_extensions(file_dir: str) -> NoReturn:
     logger = logging.getLogger(LOGGER_NAME)
 
     file_extensions = set()
@@ -53,7 +51,7 @@ def print_unique_file_extensions(file_dir: str) -> NoReturn:
     help="source directory where media files live",
 )
 def main(source_dir: str):
-    print_unique_file_extensions(file_dir=source_dir)
+    print_file_extensions(file_dir=source_dir)
 
 
 if __name__ == "__main__":
