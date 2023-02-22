@@ -79,13 +79,12 @@ def print_duplicate_file_names(file_dir: str) -> NoReturn:
         if len(potential_duplicate_files[base_file_name][initial_file_with_path]) > 0
     }
 
+    # Print duplicate file details
     logger.info("")
     logger.info(
         "There are %s files duplicated within %s" % (len(duplicate_files), file_dir)
     )
     logger.info("------------------------------")
-
-    print(duplicate_files)
 
     for base_file_name, duplicates in duplicate_files.items():
         logger.info(base_file_name)
